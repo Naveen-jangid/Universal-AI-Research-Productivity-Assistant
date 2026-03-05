@@ -8,16 +8,24 @@ from frontend.utils.api_client import list_agent_tools, run_agent
 
 
 def render() -> None:
-    st.title("🤖 Autonomous AI Agent")
     st.markdown(
-        "The AI agent can autonomously plan and execute multi-step research tasks. "
-        "It uses tools like web search, document retrieval, calculator, and code execution "
-        "to provide comprehensive, well-researched answers."
+        """
+        <div class="page-header">
+            <h1>🤖 Autonomous AI Agent</h1>
+            <p>Assign a complex research task. The agent plans, uses tools, and delivers a comprehensive result.</p>
+            <span class="badge">Web Search · Doc Retrieval · Code Execution · Calculator</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
     # ── Tools sidebar ─────────────────────────────────────────────────────
     with st.sidebar:
-        st.subheader("🔧 Available Tools")
+        st.markdown(
+            '<div style="font-size:0.7rem;font-weight:700;color:#475569;text-transform:uppercase;'
+            'letter-spacing:0.08em;padding:0.25rem 0 0.4rem;">Available Tools</div>',
+            unsafe_allow_html=True,
+        )
         try:
             tools_data = list_agent_tools()
             for tool in tools_data.get("tools", []):
@@ -27,14 +35,13 @@ def render() -> None:
             st.caption("Could not load tool list.")
 
         st.divider()
-        use_memory = st.checkbox("Use Long-term Memory", value=True)
+        use_memory = st.checkbox("Long-term Memory", value=True)
 
-    # ── Agent interface ───────────────────────────────────────────────────
     if "agent_history" not in st.session_state:
         st.session_state["agent_history"] = []
 
-    # Example tasks
-    with st.expander("💡 Example Tasks"):
+    # ── Example tasks ─────────────────────────────────────────────────────
+    with st.expander("💡 Example Tasks", expanded=len(st.session_state["agent_history"]) == 0):
         examples = [
             "Research the latest advances in large language models and summarise key findings.",
             "What is the capital of France, and what is 2^10 + 5 * 3?",
@@ -42,73 +49,81 @@ def render() -> None:
             "Analyse the documents in my knowledge base and provide a comprehensive summary.",
             "What is today's date, and calculate how many days until December 31st?",
         ]
-        for ex in examples:
-            if st.button(ex, key=f"ex_{ex[:20]}"):
-                st.session_state["agent_task_input"] = ex
+        cols = st.columns(2)
+        for i, ex in enumerate(examples):
+            with cols[i % 2]:
+                if st.button(ex[:55] + "…" if len(ex) > 55 else ex, key=f"ex_{i}",
+                             use_container_width=True):
+                    st.session_state["agent_task_input"] = ex
 
-    # Task input
+    # ── Task input ────────────────────────────────────────────────────────
     task = st.text_area(
         "Describe the task for the agent:",
         value=st.session_state.get("agent_task_input", ""),
-        height=120,
-        placeholder="e.g., Research the latest AI developments and write a comprehensive summary...",
+        height=100,
+        placeholder="e.g., Research the latest AI developments and write a comprehensive summary…",
         key="agent_task_area",
     )
 
-    col1, col2 = st.columns([2, 1])
-    with col1:
-        run_btn = st.button("🚀 Run Agent", type="primary", disabled=not task.strip())
-    with col2:
-        if st.button("🗑️ Clear History"):
+    c1, c2 = st.columns([3, 1])
+    with c1:
+        run_btn = st.button("🚀 Run Agent", type="primary", disabled=not task.strip(),
+                            use_container_width=True)
+    with c2:
+        if st.button("🗑️ Clear History", use_container_width=True):
             st.session_state["agent_history"] = []
             st.rerun()
 
-    # Run agent
+    # ── Execute ───────────────────────────────────────────────────────────
     if run_btn and task.strip():
-        with st.status("🤖 Agent is working...", expanded=True) as status:
-            st.write("Planning task execution...")
+        with st.status("🤖 Agent is working…", expanded=True) as status:
+            st.write("Planning task execution…")
             try:
                 result = run_agent(
                     task=task,
                     session_id=st.session_state.get("session_id"),
                     use_memory=use_memory,
                 )
-
-                # Show reasoning steps
                 if result.get("steps"):
                     st.write(f"Completed {result['tool_calls']} tool calls:")
                     for step in result["steps"]:
                         st.write(f"  🔧 **{step['tool']}**: {str(step['input'])[:100]}")
 
                 status.update(label="✅ Agent completed!", state="complete", expanded=False)
-
-                st.session_state["agent_history"].append(
-                    {
-                        "task": task,
-                        "result": result,
-                    }
-                )
+                st.session_state["agent_history"].append({"task": task, "result": result})
                 st.session_state.pop("agent_task_input", None)
             except Exception as e:
                 status.update(label=f"❌ Agent failed: {e}", state="error")
                 st.error(f"Error: {e}")
 
-    # Display results
+    # ── Results history ───────────────────────────────────────────────────
     for i, item in enumerate(reversed(st.session_state["agent_history"])):
-        st.divider()
-        st.markdown(f"**Task {len(st.session_state['agent_history']) - i}:** {item['task']}")
-
+        run_num = len(st.session_state["agent_history"]) - i
         result = item["result"]
 
-        # Main answer
-        st.subheader("📋 Result")
-        st.markdown(result.get("output", "No output."))
+        st.markdown(
+            f'<div class="card card-accent" style="margin-top:1rem;">'
+            f'<span style="color:#6366f1;font-weight:700;font-size:0.8rem;">RUN #{run_num}</span><br>'
+            f'<span style="font-weight:600;">{item["task"][:120]}{"…" if len(item["task"])>120 else ""}</span>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
 
-        # Reasoning trace
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        st.markdown(result.get("output", "No output."))
+        st.markdown("</div>", unsafe_allow_html=True)
+
         if result.get("steps"):
             with st.expander(f"🔍 Reasoning Trace ({result['tool_calls']} tool calls)"):
                 for j, step in enumerate(result["steps"], 1):
-                    st.markdown(f"**Step {j}: `{step['tool']}`**")
-                    st.code(f"Input: {step['input']}", language="text")
-                    st.code(f"Output: {step['output']}", language="text")
-                    st.divider()
+                    st.markdown(
+                        f'<div class="card" style="padding:0.65rem 1rem;margin:6px 0;">'
+                        f'<span class="badge-purple">Step {j}</span>&nbsp;'
+                        f'<code>{step["tool"]}</code></div>',
+                        unsafe_allow_html=True,
+                    )
+                    c_in, c_out = st.columns(2)
+                    with c_in:
+                        st.code(f"Input: {step['input']}", language="text")
+                    with c_out:
+                        st.code(f"Output: {step['output']}", language="text")

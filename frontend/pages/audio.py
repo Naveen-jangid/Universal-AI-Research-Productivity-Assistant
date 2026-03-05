@@ -8,23 +8,38 @@ from frontend.utils.api_client import ask_about_audio, process_audio
 
 
 def render() -> None:
-    st.title("🎙️ Speech & Audio Processing")
     st.markdown(
-        "Upload audio or video files to transcribe speech using OpenAI Whisper, "
-        "generate structured summaries, extract keywords, and ask questions."
+        """
+        <div class="page-header">
+            <h1>🎙️ Speech & Audio Processing</h1>
+            <p>Upload audio or video files to transcribe, summarise, extract keywords, and ask questions.</p>
+            <span class="badge">OpenAI Whisper</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
     # ── Upload section ────────────────────────────────────────────────────
+    st.markdown('<div class="card card-accent">', unsafe_allow_html=True)
     uploaded = st.file_uploader(
-        "Upload audio/video file",
+        "Supported: MP3, MP4, WAV, OGG, WEBM, M4A, MPEG",
         type=["mp3", "mp4", "wav", "ogg", "webm", "m4a", "mpeg"],
+        label_visibility="collapsed",
     )
+    st.markdown("</div>", unsafe_allow_html=True)
 
     if uploaded:
         st.audio(uploaded)
+        st.markdown(
+            f'<div class="card" style="padding:0.6rem 1rem;margin:0.5rem 0;">'
+            f'🎵 <strong>{uploaded.name}</strong>'
+            f'<span style="color:#64748b;font-size:0.82rem;margin-left:12px;">'
+            f'{uploaded.size / 1024:.1f} KB</span></div>',
+            unsafe_allow_html=True,
+        )
 
         if st.button("🎤 Transcribe & Analyse", type="primary"):
-            with st.spinner("Transcribing... this may take a minute for long recordings..."):
+            with st.spinner("Transcribing… this may take a minute for long recordings"):
                 try:
                     result = process_audio(
                         file_bytes=uploaded.getvalue(),
@@ -38,29 +53,34 @@ def render() -> None:
 
     # ── Results section ───────────────────────────────────────────────────
     if result := st.session_state.get("audio_result"):
+        st.markdown("<br>", unsafe_allow_html=True)
         tab_transcript, tab_summary, tab_keywords, tab_qa = st.tabs(
             ["📝 Transcript", "📋 Summary", "🏷️ Keywords", "❓ Q&A"]
         )
 
         with tab_transcript:
-            st.subheader("Full Transcript")
-            col1, col2 = st.columns([3, 1])
-            with col2:
-                st.metric("Word Count", result.get("word_count", 0))
+            c1, c2 = st.columns([4, 1])
+            with c2:
+                st.metric("Words", result.get("word_count", 0))
                 st.download_button(
-                    "💾 Download Transcript",
+                    "💾 Download",
                     data=result.get("transcript", ""),
                     file_name="transcript.txt",
                     mime="text/plain",
+                    use_container_width=True,
                 )
-            with col1:
-                transcript_text = result.get("transcript", "No transcript available.")
-                st.text_area("Transcript", value=transcript_text, height=400, disabled=True)
+            with c1:
+                st.text_area(
+                    "Full Transcript",
+                    value=result.get("transcript", "No transcript available."),
+                    height=400,
+                    disabled=True,
+                )
 
         with tab_summary:
-            st.subheader("AI-Generated Summary")
+            st.markdown('<div class="card">', unsafe_allow_html=True)
             st.markdown(result.get("summary", "No summary available."))
-
+            st.markdown("</div>", unsafe_allow_html=True)
             st.download_button(
                 "💾 Download Summary",
                 data=result.get("summary", ""),
@@ -69,23 +89,17 @@ def render() -> None:
             )
 
         with tab_keywords:
-            st.subheader("Extracted Keywords & Topics")
             keywords = result.get("keywords", [])
             if keywords:
-                # Display as tags
-                cols = st.columns(min(len(keywords), 5))
-                for i, kw in enumerate(keywords):
-                    cols[i % 5].markdown(
-                        f"<span style='background:#e8f4f8;padding:4px 8px;"
-                        f"border-radius:12px;font-size:0.85em'>{kw}</span>",
-                        unsafe_allow_html=True,
-                    )
+                tags_html = " ".join(
+                    f'<span class="badge-purple" style="margin:3px;display:inline-block;">{kw}</span>'
+                    for kw in keywords
+                )
+                st.markdown(f'<div style="line-height:2.2;">{tags_html}</div>', unsafe_allow_html=True)
             else:
                 st.info("No keywords extracted.")
 
         with tab_qa:
-            st.subheader("Ask Questions About the Audio")
-
             if "audio_qa_history" not in st.session_state:
                 st.session_state["audio_qa_history"] = []
 
@@ -95,12 +109,12 @@ def render() -> None:
                 with st.chat_message("assistant"):
                     st.markdown(qa["answer"])
 
-            question = st.chat_input("Ask about the audio content...")
+            question = st.chat_input("Ask about the audio content…")
             if question and question.strip():
                 with st.chat_message("user"):
                     st.markdown(question)
                 with st.chat_message("assistant"):
-                    with st.spinner("Thinking..."):
+                    with st.spinner("Thinking…"):
                         try:
                             resp = ask_about_audio(
                                 transcript=result.get("transcript", ""),
