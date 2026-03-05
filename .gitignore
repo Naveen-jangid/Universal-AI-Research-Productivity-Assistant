@@ -44,16 +44,18 @@ venv.bak/
 .conda/
 
 # ─── Generated / runtime data ─────────────────────────────────────────────────
-uploads/
-vectorstore/
-memory/
-logs/
+# NOTE: leading / anchors to project root only — does NOT affect backend/vectorstore or backend/models
+/uploads/
+/vectorstore/
+/memory/
+/logs/
 *.db
 *.sqlite
 *.sqlite3
 
 # ─── Model caches ─────────────────────────────────────────────────────────────
-models/
+# /models/ anchored to root — does NOT affect backend/models source code
+/models/
 .cache/
 huggingface/
 whisper_models/

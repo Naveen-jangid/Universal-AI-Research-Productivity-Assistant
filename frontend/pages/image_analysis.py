@@ -8,34 +8,46 @@ from frontend.utils.api_client import analyse_image
 
 
 def render() -> None:
-    st.title("🖼️ Image Analysis")
     st.markdown(
-        "Upload images and let the AI describe, analyse, and answer questions about them. "
-        "Powered by GPT-4o Vision."
+        """
+        <div class="page-header">
+            <h1>🖼️ Image Analysis</h1>
+            <p>Upload any image and get an AI-powered description, object detection, sentiment, and follow-up Q&amp;A.</p>
+            <span class="badge">GPT-4o Vision</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
-    # ── Upload section ────────────────────────────────────────────────────
+    # ── Upload & analyse ──────────────────────────────────────────────────
     uploaded = st.file_uploader(
-        "Upload an image",
+        "Upload an image (JPG, PNG, WEBP, GIF, BMP, TIFF)",
         type=["jpg", "jpeg", "png", "gif", "webp", "bmp", "tiff"],
+        label_visibility="collapsed",
     )
 
     if uploaded:
-        col1, col2 = st.columns([1, 1])
-        with col1:
-            st.image(uploaded, caption=uploaded.name, use_container_width=True)
+        col_img, col_ctrl = st.columns([1, 1])
 
-        with col2:
+        with col_img:
+            st.markdown('<div class="card" style="padding:0.75rem;">', unsafe_allow_html=True)
+            st.image(uploaded, caption=uploaded.name, use_container_width=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        with col_ctrl:
+            st.markdown('<div class="card card-accent">', unsafe_allow_html=True)
+            st.markdown("**Analysis prompt**")
             prompt = st.text_area(
-                "Analysis prompt (optional)",
+                "Prompt",
                 value="Describe this image in detail. Include objects, colors, mood, and any text visible.",
                 height=120,
+                label_visibility="collapsed",
             )
-
-            analyse_btn = st.button("🔍 Analyse Image", type="primary")
+            analyse_btn = st.button("🔍 Analyse Image", type="primary", use_container_width=True)
+            st.markdown("</div>", unsafe_allow_html=True)
 
         if analyse_btn:
-            with st.spinner("Analysing image with AI vision..."):
+            with st.spinner("Analysing with GPT-4o Vision…"):
                 try:
                     result = analyse_image(
                         file_bytes=uploaded.getvalue(),
@@ -43,35 +55,37 @@ def render() -> None:
                         content_type=uploaded.type or "image/jpeg",
                         prompt=prompt,
                     )
-
-                    # Store result for Q&A
                     st.session_state["last_image_analysis"] = result
                     st.session_state["last_image_path"] = result.get("image_id", "")
 
-                    st.subheader("📊 Analysis Results")
+                    st.markdown(
+                        '<div class="card card-accent" style="margin-top:1rem;">'
+                        '<strong style="color:#6366f1;">Analysis Results</strong>'
+                        '</div>',
+                        unsafe_allow_html=True,
+                    )
 
                     # Description
-                    st.markdown("**Description:**")
-                    st.markdown(result["description"])
+                    st.markdown(
+                        '<div class="card">'
+                        f'<strong>Description</strong><br><br>{result["description"]}'
+                        '</div>',
+                        unsafe_allow_html=True,
+                    )
 
-                    # Metadata
-                    col_a, col_b = st.columns(2)
-                    with col_a:
+                    # Metadata row
+                    c1, c2 = st.columns(2)
+                    with c1:
                         if result.get("objects"):
-                            st.markdown("**Detected Objects:**")
-                            for obj in result["objects"]:
-                                st.markdown(f"• {obj}")
-                    with col_b:
+                            st.markdown("**Detected Objects**")
+                            tags_html = " ".join(
+                                f'<span class="badge-blue">{obj}</span>' for obj in result["objects"]
+                            )
+                            st.markdown(tags_html, unsafe_allow_html=True)
+                    with c2:
                         sentiment = result.get("sentiment", "neutral")
-                        sentiment_icons = {
-                            "positive": "😊",
-                            "neutral": "😐",
-                            "negative": "😟",
-                        }
-                        st.metric(
-                            "Overall Sentiment",
-                            f"{sentiment_icons.get(sentiment, '❓')} {sentiment.title()}",
-                        )
+                        icons = {"positive": "😊", "neutral": "😐", "negative": "😟"}
+                        st.metric("Sentiment", f"{icons.get(sentiment, '❓')} {sentiment.title()}")
 
                     if result.get("additional_notes"):
                         with st.expander("Additional Notes"):
@@ -80,10 +94,13 @@ def render() -> None:
                 except Exception as e:
                     st.error(f"❌ Analysis failed: {e}")
 
-    # ── Follow-up Q&A section ─────────────────────────────────────────────
+    # ── Follow-up Q&A ─────────────────────────────────────────────────────
     if st.session_state.get("last_image_analysis"):
         st.divider()
-        st.subheader("❓ Ask About This Image")
+        st.markdown(
+            '<div style="font-size:1.05rem;font-weight:600;margin-bottom:0.5rem;">❓ Ask about this image</div>',
+            unsafe_allow_html=True,
+        )
 
         if "image_qa_history" not in st.session_state:
             st.session_state["image_qa_history"] = []
@@ -94,25 +111,25 @@ def render() -> None:
             with st.chat_message("assistant"):
                 st.markdown(qa["answer"])
 
-        question = st.text_input("Ask a follow-up question about the image...")
-        if st.button("Ask") and question.strip():
+        question = st.chat_input("Ask a follow-up question about the image…")
+        if question and question.strip():
             prior_desc = st.session_state["last_image_analysis"].get("description", "")
-            with st.spinner("Thinking..."):
-                try:
-                    from frontend.utils.api_client import _post_json
-
-                    resp = _post_json(
-                        "/images/question",
-                        {
-                            "image_path": st.session_state.get("last_image_path", ""),
-                            "question": question,
-                            "prior_description": prior_desc,
-                        },
-                    )
-                    answer = resp.get("answer", "No answer generated.")
-                    st.session_state["image_qa_history"].append(
-                        {"question": question, "answer": answer}
-                    )
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"❌ Error: {e}")
+            with st.chat_message("user"):
+                st.markdown(question)
+            with st.chat_message("assistant"):
+                with st.spinner("Thinking…"):
+                    try:
+                        from frontend.utils.api_client import _post_json
+                        resp = _post_json(
+                            "/images/question",
+                            {
+                                "image_path": st.session_state.get("last_image_path", ""),
+                                "question": question,
+                                "prior_description": prior_desc,
+                            },
+                        )
+                        answer = resp.get("answer", "No answer generated.")
+                        st.markdown(answer)
+                        st.session_state["image_qa_history"].append({"question": question, "answer": answer})
+                    except Exception as e:
+                        st.error(f"❌ Error: {e}")
