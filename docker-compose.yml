@@ -1,0 +1,96 @@
+version: "3.9"
+
+# ─── Universal AI Research & Productivity Assistant ────────────────────────
+# Production-ready Docker Compose configuration.
+#
+# Services:
+#   backend   - FastAPI REST API  (port 8000)
+#   frontend  - Streamlit UI      (port 8501)
+#   nginx     - Reverse proxy     (port 80 / 443)
+#
+# Usage:
+#   cp .env.example .env          # fill in your API keys
+#   docker compose up --build -d  # start all services
+#   docker compose logs -f        # tail logs
+
+services:
+  # ── Backend (FastAPI) ──────────────────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: ai_assistant_backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - HUGGINGFACE_API_TOKEN=${HUGGINGFACE_API_TOKEN:-}
+      - SERPAPI_API_KEY=${SERPAPI_API_KEY:-}
+      - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
+      - DEBUG=${DEBUG:-false}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    volumes:
+      - uploads_data:/app/uploads
+      - vector_data:/app/vectorstore
+      - memory_data:/app/memory
+      - log_data:/app/logs
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import httpx; httpx.get('http://localhost:8000/health').raise_for_status()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - ai_network
+
+  # ── Frontend (Streamlit) ───────────────────────────────────────────────
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: ai_assistant_frontend
+    restart: unless-stopped
+    ports:
+      - "8501:8501"
+    environment:
+      - API_BASE_URL=http://backend:8000/api/v1
+    depends_on:
+      backend:
+        condition: service_healthy
+    volumes:
+      - memory_data:/app/memory    # shared for direct SQLite access in Memory page
+    networks:
+      - ai_network
+
+  # ── Nginx Reverse Proxy ────────────────────────────────────────────────
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: ai_assistant_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - ai_network
+
+# ── Volumes ────────────────────────────────────────────────────────────────
+volumes:
+  uploads_data:
+    driver: local
+  vector_data:
+    driver: local
+  memory_data:
+    driver: local
+  log_data:
+    driver: local
+
+# ── Networks ───────────────────────────────────────────────────────────────
+networks:
+  ai_network:
+    driver: bridge

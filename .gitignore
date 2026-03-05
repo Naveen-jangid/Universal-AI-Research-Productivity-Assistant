@@ -1,0 +1,86 @@
+# ─── Environment & Secrets ───────────────────────────────────────────────────
+.env
+*.env.local
+*.env.production
+secrets/
+
+# ─── Python ──────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+.ruff_cache/
+
+# ─── Virtual environments ─────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.conda/
+
+# ─── Generated / runtime data ─────────────────────────────────────────────────
+uploads/
+vectorstore/
+memory/
+logs/
+*.db
+*.sqlite
+*.sqlite3
+
+# ─── Model caches ─────────────────────────────────────────────────────────────
+models/
+.cache/
+huggingface/
+whisper_models/
+
+# ─── Jupyter ──────────────────────────────────────────────────────────────────
+.ipynb_checkpoints
+*.ipynb
+
+# ─── Testing ─────────────────────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+*.cover
+.hypothesis/
+
+# ─── IDEs ────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ─── Docker ──────────────────────────────────────────────────────────────────
+.docker/
+
+# ─── Distribution ─────────────────────────────────────────────────────────────
+*.tar.gz
+*.zip

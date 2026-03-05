@@ -1,0 +1,79 @@
+# ─── Universal AI Research & Productivity Assistant ─── requirements.txt ────
+# Full dependency list for both backend and frontend.
+# For production Docker images, use requirements-backend.txt / requirements-frontend.txt.
+
+# ── Web Framework ──────────────────────────────────────────────────────────
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+python-multipart==0.0.17
+httpx==0.27.2
+
+# ── LangChain (core stack) ─────────────────────────────────────────────────
+langchain==0.3.7
+langchain-core==0.3.19
+langchain-openai==0.2.9
+langchain-community==0.3.7
+langchain-text-splitters==0.3.2
+
+# ── LlamaIndex (optional RAG alternative) ──────────────────────────────────
+llama-index-core==0.11.22
+llama-index-llms-openai==0.2.16
+llama-index-embeddings-openai==0.2.5
+llama-index-vector-stores-faiss==0.2.2
+
+# ── Vector Store ───────────────────────────────────────────────────────────
+faiss-cpu==1.9.0
+numpy>=1.24.0,<2.0
+
+# ── OpenAI ─────────────────────────────────────────────────────────────────
+openai==1.54.4
+
+# ── HuggingFace ────────────────────────────────────────────────────────────
+transformers==4.46.2
+sentence-transformers==3.2.1
+huggingface-hub==0.26.2
+tokenizers>=0.20.0
+
+# ── PDF / Document processing ──────────────────────────────────────────────
+PyMuPDF==1.24.13           # Fast PDF extraction (fitz)
+pypdf==5.1.0               # Fallback PDF parser
+python-docx==1.1.2         # DOCX processing
+
+# ── Audio / Speech ─────────────────────────────────────────────────────────
+openai-whisper==20240930   # Local Whisper (optional)
+pydub==0.25.1              # Audio manipulation
+
+# ── Image processing ───────────────────────────────────────────────────────
+Pillow==11.0.0
+
+# ── Data analysis ──────────────────────────────────────────────────────────
+pandas==2.2.3
+numpy>=1.24.0,<2.0
+plotly==5.24.1
+openpyxl==3.1.5            # Excel support
+pyarrow==18.0.0            # Parquet support
+
+# ── Web search ─────────────────────────────────────────────────────────────
+duckduckgo-search==6.3.5
+google-search-results==2.4.2   # SerpAPI
+
+# ── Configuration & validation ────────────────────────────────────────────
+pydantic==2.9.2
+pydantic-settings==2.6.1
+python-dotenv==1.0.1
+
+# ── Frontend ───────────────────────────────────────────────────────────────
+streamlit==1.40.0
+streamlit-chat==0.1.1
+
+# ── ML / Torch (needed for local HF models) ───────────────────────────────
+torch==2.5.1                   # CPU-only; replace with torch+cu121 for GPU
+torchvision==0.20.1
+
+# ── Utilities ──────────────────────────────────────────────────────────────
+aiofiles==24.1.0
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+tenacity==9.0.0
+tqdm==4.67.0
+tiktoken==0.8.0
